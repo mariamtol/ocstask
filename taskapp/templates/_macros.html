@@ -1,0 +1,133 @@
+{% macro nav_link(endpoint, icon, label) -%}
+  <li class="nav-item">
+    <a class="nav-link {{ 'active' if request.endpoint == endpoint }}" href="{{ url_for(endpoint) }}">
+      <i class="bi {{ icon }}"></i> {{ label }}
+    </a>
+  </li>
+{%- endmacro %}
+
+{% macro status_badge(status) -%}
+  {% set icons = {'not_started': 'bi-circle', 'in_progress': 'bi-arrow-repeat', 'done': 'bi-check-circle-fill', 'on_hold': 'bi-pause-circle'} %}
+  <span class="badge status-{{ status }}"><i class="bi {{ icons[status] }}"></i> {{ STATUS_LABELS[status] }}</span>
+{%- endmacro %}
+
+{% macro priority_badge(priority) -%}
+  {% set icons = {'low': 'bi-chevron-down', 'medium': 'bi-dash', 'high': 'bi-chevron-up', 'urgent': 'bi-exclamation-triangle-fill'} %}
+  <span class="badge prio-{{ priority }}"><i class="bi {{ icons[priority] }}"></i> {{ PRIORITY_LABELS[priority] }}</span>
+{%- endmacro %}
+
+{% macro progress_bar(value, height=10, show_label=true) -%}
+  {% set v = value or 0 %}
+  <div class="d-flex align-items-center gap-2">
+    <div class="progress flex-grow-1" style="height: {{ height }}px" role="progressbar"
+         aria-valuenow="{{ v }}" aria-valuemin="0" aria-valuemax="100" aria-label="ความคืบหน้า {{ v|pct }}%">
+      <div class="progress-bar {{ 'bar-done' if v >= 100 else '' }}" style="width: {{ v }}%"></div>
+    </div>
+    {% if show_label %}<span class="small fw-semibold text-nowrap pct-label">{{ v|pct }}%</span>{% endif %}
+  </div>
+{%- endmacro %}
+
+{% macro due_label(task) -%}
+  {% if task.due_date %}
+    <span class="{{ 'text-overdue fw-semibold' if task.is_overdue else '' }}">{{ task.due_date|thaidate }}</span>
+    {% if task.is_overdue %}
+      <span class="badge badge-overdue"><i class="bi bi-alarm"></i> เลยกำหนด {{ -task.days_left }} วัน</span>
+    {% elif task.days_left is not none and 0 <= task.days_left <= due_soon_days and task.status not in ('done', 'on_hold') %}
+      <span class="badge badge-soon"><i class="bi bi-hourglass-split"></i> {{ 'วันนี้' if task.days_left == 0 else 'อีก ' ~ task.days_left ~ ' วัน' }}</span>
+    {% endif %}
+  {% else %}-{% endif %}
+{%- endmacro %}
+
+{% macro assignee_chips(assignees, limit=3) -%}
+  {% for a in assignees[:limit] %}<span class="chip" title="{{ a.full_name }}">{{ a.full_name.split(' ')[0] }}</span>{% endfor %}
+  {% if assignees|length > limit %}<span class="chip chip-more">+{{ assignees|length - limit }}</span>{% endif %}
+  {% if not assignees %}<span class="text-muted small">ยังไม่มอบหมาย</span>{% endif %}
+{%- endmacro %}
+
+{% macro filter_bar(filters, staff=None, endpoint='dashboard.index', show_search=false) -%}
+  <form class="card filter-card mb-4" method="get" action="{{ url_for(endpoint) }}">
+    <div class="card-body row g-2 align-items-end">
+      <div class="col-12 col-md-2">
+        <label class="form-label small">ปีการศึกษา</label>
+        <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+          {% for y in academic_years %}
+            <option value="{{ y.id }}" {{ 'selected' if filters.year == y.id }}>{{ y.year_be }}{{ ' (ปัจจุบัน)' if current_year and y.id == current_year.id }}</option>
+          {% endfor %}
+          <option value="all" {{ 'selected' if filters.year == 'all' }}>ทุกปีการศึกษา</option>
+        </select>
+      </div>
+      {% if show_search %}
+      <div class="col-12 col-md-3">
+        <label class="form-label small">ค้นหา</label>
+        <input type="search" name="q" value="{{ filters.q or '' }}" class="form-control form-control-sm" placeholder="ชื่องาน / รายละเอียด">
+      </div>
+      {% endif %}
+      <div class="col-6 col-md-2">
+        <label class="form-label small">สถานะ</label>
+        <select name="status" class="form-select form-select-sm">
+          <option value="">ทั้งหมด</option>
+          {% for k, v in STATUS_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if filters.status == k }}>{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="col-6 col-md-2">
+        <label class="form-label small">ความสำคัญ</label>
+        <select name="priority" class="form-select form-select-sm">
+          <option value="">ทั้งหมด</option>
+          {% for k, v in PRIORITY_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if filters.priority == k }}>{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+      {% if staff is not none %}
+      <div class="col-12 col-md-2">
+        <label class="form-label small">ผู้รับผิดชอบ</label>
+        <select name="assignee" class="form-select form-select-sm">
+          <option value="">ทุกคน</option>
+          {% for u in staff %}<option value="{{ u.id }}" {{ 'selected' if filters.assignee == u.id }}>{{ u.full_name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <div class="col-6 col-md">
+        <label class="form-label small">ตั้งแต่วันที่</label>
+        <input type="date" name="date_from" value="{{ filters.date_from or '' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-6 col-md">
+        <label class="form-label small">ถึงวันที่</label>
+        <input type="date" name="date_to" value="{{ filters.date_to or '' }}" class="form-control form-control-sm">
+      </div>
+      <div class="col-12 col-md-auto d-flex gap-2">
+        <button class="btn btn-primary btn-sm"><i class="bi bi-funnel"></i> กรอง</button>
+        <a href="{{ url_for(endpoint) }}" class="btn btn-outline-secondary btn-sm">ล้าง</a>
+      </div>
+    </div>
+  </form>
+{%- endmacro %}
+
+{% macro task_table(tasks, empty_text='ไม่พบงาน') -%}
+  {% if tasks %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0 task-table">
+      <thead><tr>
+        <th>ชื่องาน</th><th>ความสำคัญ</th><th>สถานะ</th><th>ผู้รับผิดชอบ</th><th>ครบกำหนด</th><th style="min-width:160px">ความคืบหน้า</th>
+      </tr></thead>
+      <tbody>
+      {% for t in tasks %}
+        <tr class="{{ 'row-overdue' if t.is_overdue }}">
+          <td>
+            <a href="{{ url_for('tasks.detail', task_id=t.id) }}" class="fw-semibold text-decoration-none">{{ t.title }}</a>
+            {% if t.creator_scope == 'own' %}<span class="badge badge-self ms-1" title="เพิ่มโดย {{ t.creator_name }}"><i class="bi bi-person-plus"></i> พนักงานเพิ่มเอง</span>{% endif %}
+            {% if t.open_issues %}<span class="badge badge-issue ms-1" title="มีปัญหา/อุปสรรครอแก้ไข"><i class="bi bi-flag-fill"></i> {{ t.open_issues }}</span>{% endif %}
+            {% if t.subtask_count %}<div class="small text-muted">งานย่อย {{ t.subtask_done }}/{{ t.subtask_count }}</div>{% endif %}
+          </td>
+          <td>{{ priority_badge(t.priority) }}</td>
+          <td>{{ status_badge(t.status) }}</td>
+          <td>{{ assignee_chips(t.assignees) }}</td>
+          <td class="small">{{ due_label(t) }}</td>
+          <td>{{ progress_bar(t.progress) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <div class="empty-state"><i class="bi bi-inbox"></i><div>{{ empty_text }}</div></div>
+  {% endif %}
+{%- endmacro %}

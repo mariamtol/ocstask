@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="small mb-2"><a href="{{ url_for('tasks.index') }}">{{ tasks_label }}</a> /
+  {% if is_new %}สร้างงานใหม่{% else %}<a href="{{ url_for('tasks.detail', task_id=task.id) }}">{{ task.title }}</a> / แก้ไข{% endif %}
+</nav>
+<h1 class="h4 fw-bold mb-3">{{ 'สร้างงานใหม่' if is_new else 'แก้ไขงาน' }}</h1>
+
+<form method="post" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="card-body row g-3">
+    <div class="col-12">
+      <label class="form-label">ชื่องาน <span class="text-danger">*</span></label>
+      <input name="title" class="form-control" value="{{ task.title or '' }}" required maxlength="200">
+    </div>
+    <div class="col-12">
+      <label class="form-label">รายละเอียด</label>
+      <textarea name="description" class="form-control" rows="4">{{ task.description or '' }}</textarea>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label">วันเริ่มต้น</label>
+      <input type="date" name="start_date" class="form-control" value="{{ task.start_date or '' }}">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label">วันครบกำหนด</label>
+      <input type="date" name="due_date" class="form-control" value="{{ task.due_date or '' }}">
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label">ระดับความสำคัญ</label>
+      <select name="priority" class="form-select">
+        {% for k, v in PRIORITY_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if task.priority == k }}>{{ v }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-3">
+      <label class="form-label">สถานะ</label>
+      <select name="status" class="form-select">
+        {% for k, v in STATUS_LABELS.items() %}<option value="{{ k }}" {{ 'selected' if task.status == k }}>{{ v }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-12 col-md-6">
+      <label class="form-label">ปีการศึกษา</label>
+      <select name="academic_year_id" class="form-select" id="yearSelect">
+        <option value="">อัตโนมัติตามวันเริ่มต้นงาน</option>
+        {% for y in academic_years %}
+          <option value="{{ y.id }}" data-start="{{ y.start_date }}" data-end="{{ y.end_date }}"
+                  {{ 'selected' if task.academic_year_id == y.id }}>ปีการศึกษา {{ y.year_be }} ({{ y.start_date|thaidate }} – {{ y.end_date|thaidate }})</option>
+        {% endfor %}
+      </select>
+      <div class="form-text" id="yearHint"></div>
+    </div>
+    {% if not can_assign %}
+    <div class="col-12">
+      <div class="alert alert-info small mb-0"><i class="bi bi-info-circle"></i>
+        {% if is_new %}งานที่คุณเพิ่มเองจะมอบหมายให้คุณเป็นผู้รับผิดชอบ และระบบจะแจ้งหัวหน้าหน่วยงานให้ทราบ
+        {% else %}การเปลี่ยนผู้รับผิดชอบทำได้โดยหัวหน้าหน่วยงาน{% endif %}</div>
+    </div>
+    {% else %}
+    <div class="col-12">
+      <label class="form-label">ผู้รับผิดชอบ <span class="text-muted small">(เลือกได้หลายคน{{ ' · เฉพาะสมาชิกในแผนกของคุณ' if is_div_head }})</span></label>
+      {% if external_assignees %}
+      <div class="small text-muted mb-2"><i class="bi bi-info-circle"></i> ผู้รับผิดชอบจากแผนกอื่น (คงไว้ตามเดิม):
+        {% for a in external_assignees %}<span class="chip">{{ a.full_name }}</span>{% endfor %}</div>
+      {% endif %}
+      <div class="assignee-grid">
+        {% for u in staff %}
+          <label class="assignee-option">
+            <input type="checkbox" class="form-check-input" name="assignees" value="{{ u.id }}" {{ 'checked' if u.id in task.assignees }}>
+            <span><span class="fw-semibold">{{ u.full_name }}</span><br><span class="small text-muted">{{ u.position or '' }}</span></span>
+          </label>
+        {% else %}
+          <div class="text-muted small">{{ 'ยังไม่มีสมาชิกในแผนกของคุณ' if is_div_head else 'ยังไม่มีพนักงานในระบบ' }}{% if is_admin %} — <a href="{{ url_for('misc.user_form') }}">เพิ่มผู้ใช้</a>{% else %} — กรุณาติดต่อผู้ดูแลระบบ{% endif %}</div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  <div class="card-footer d-flex justify-content-end gap-2">
+    <a href="{{ url_for('tasks.index') if is_new else url_for('tasks.detail', task_id=task.id) }}" class="btn btn-outline-secondary">ยกเลิก</a>
+    <button class="btn btn-primary"><i class="bi bi-save"></i> บันทึก</button>
+  </div>
+</form>
+{% endblock %}

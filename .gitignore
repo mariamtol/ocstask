@@ -1,0 +1,21 @@
+# Local data — never commit: database, backups, secret key, initial admin password
+instance/
+*.db
+*.sqlite3
+
+# Uploaded report attachments
+uploads/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Editor / OS / local tooling
+.claude/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<nav class="small mb-2"><a href="{{ url_for('admin.index') }}">ผู้ดูแลระบบ</a> / <a href="{{ url_for('admin.years') }}">ปีการศึกษา</a> / แก้ไข</nav>
+<h1 class="h4 fw-bold mb-3">แก้ไขปีการศึกษา {{ year.year_be }}</h1>
+<form method="post" class="card" style="max-width: 480px">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="card-body">{% include "admin/_year_fields.html" %}</div>
+  <div class="card-footer d-flex justify-content-end gap-2">
+    <a href="{{ url_for('admin.years') }}" class="btn btn-outline-secondary">ยกเลิก</a>
+    <button class="btn btn-primary"><i class="bi bi-save"></i> บันทึก</button>
+  </div>
+</form>
+{% endblock %}

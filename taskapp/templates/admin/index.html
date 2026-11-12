@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}ผู้ดูแลระบบ - ระบบมอบหมายและติดตามงาน{% endblock %}
+{% block content %}
+<div class="mb-3">
+  <h1 class="h4 fw-bold mb-0">ภาพรวมและตั้งค่าระบบ</h1>
+  <div class="text-muted small">สำหรับผู้ดูแลระบบ · ปีการศึกษาปัจจุบัน: {{ current_year.year_be if current_year else '-' }}</div>
+</div>
+
+<div class="row g-3 mb-4">
+  {% set icons = {'admin': 'bi-shield-lock', 'manager': 'bi-person-badge', 'division_head': 'bi-person-workspace', 'staff': 'bi-people'} %}
+  {% for r in roles_list %}{% set role = r.code %}
+  <div class="col-6 col-lg">
+    <a class="stat-tile stat-link" href="{{ url_for('admin.roles') }}">
+      <div class="stat-label"><i class="bi {{ icons.get(role, 'bi-person-gear') }}"></i> {{ r.name }}</div>
+      <div class="stat-value">{{ role_counts.get(role, (0, 0))[1] or 0 }}</div>
+      <div class="small text-muted">ใช้งานอยู่ จากทั้งหมด {{ role_counts.get(role, (0, 0))[0] }} บัญชี</div>
+    </a>
+  </div>
+  {% endfor %}
+  <div class="col-6 col-lg">
+    <div class="stat-tile">
+      <div class="stat-label"><i class="bi bi-paperclip"></i> ไฟล์แนบ</div>
+      <div class="stat-value">{{ stats.attachments }}</div>
+      <div class="small text-muted">ใช้พื้นที่ {{ stats.storage|filesize }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-calendar3"></i> งานแยกตามปีการศึกษา</span>
+        <span class="text-nowrap">
+          <a href="{{ url_for('admin.departments') }}" class="btn btn-sm btn-outline-primary">หน่วยงานและแผนก</a>
+          <a href="{{ url_for('admin.years') }}" class="btn btn-sm btn-outline-primary">จัดการปีการศึกษา</a>
+        </span>
+      </div>
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead><tr><th>ปีการศึกษา</th><th>ช่วงวันที่</th><th class="text-end">งานทั้งหมด</th><th class="text-end">เสร็จสิ้น</th></tr></thead>
+          <tbody>
+          {% for y in years %}
+            <tr class="{{ 'current-year-row' if current_year and y.id == current_year.id }}">
+              <td class="fw-semibold">
+                <a href="{{ url_for('tasks.index', year=y.id) }}" class="text-decoration-none">{{ y.year_be }}</a>
+                {% if current_year and y.id == current_year.id %}<span class="badge status-done">ปัจจุบัน</span>{% endif %}
+              </td>
+              <td class="small">{{ y.start_date|thaidate }} – {{ y.end_date|thaidate }}</td>
+              <td class="text-end">{{ y.task_count }}</td>
+              <td class="text-end">{{ y.done_count or 0 }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="4" class="text-center text-muted">ยังไม่มีปีการศึกษา</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><i class="bi bi-database"></i> ข้อมูลในระบบ</div>
+      <ul class="list-group list-group-flush">
+        <li class="list-group-item d-flex justify-content-between"><span>งาน (Task) ทั้งหมด</span><span class="fw-semibold">{{ stats.tasks }}</span></li>
+        <li class="list-group-item d-flex justify-content-between"><span>รายงานผลการดำเนินงาน</span><span class="fw-semibold">{{ stats.reports }}</span></li>
+        <li class="list-group-item d-flex justify-content-between"><span>การแจ้งเตือนทั้งหมด</span><span class="fw-semibold">{{ stats.notifications }}</span></li>
+        <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span>การแจ้งเตือนที่อ่านแล้วและเก่ากว่า 90 วัน: <span class="fw-semibold">{{ stats.old_read_notifications }}</span></span>
+          <form method="post" action="{{ url_for('admin.cleanup_notifications') }}" data-confirm="ลบการแจ้งเตือนที่อ่านแล้วและเก่ากว่า 90 วัน?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-sm btn-outline-danger" {{ 'disabled' if not stats.old_read_notifications }}><i class="bi bi-trash"></i> ล้างข้อมูล</button>
+          </form>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-sliders"></i> ตั้งค่าระบบ</div>
+      <form method="post" action="{{ url_for('admin.settings') }}" class="card-body">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="mb-3">
+          <label class="form-label">ชื่อหน่วยงาน</label>
+          <input name="org_name" value="{{ org_name }}" class="form-control" required maxlength="120">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">แจ้งเตือนงานใกล้ครบกำหนดล่วงหน้า (วัน)</label>
+          <input type="number" name="due_soon_days" value="{{ due_soon_days }}" min="0" max="60" class="form-control" required>
+          <div class="form-text">ใช้กับการแจ้งเตือนและแดชบอร์ด “ใกล้ครบกำหนด”</div>
+        </div>
+        <button class="btn btn-primary w-100"><i class="bi bi-save"></i> บันทึกการตั้งค่า</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

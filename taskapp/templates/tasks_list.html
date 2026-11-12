@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_macros.html" import filter_bar, task_table with context %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <h1 class="h4 fw-bold mb-0">{{ tasks_label }} <span class="text-muted fs-6">({{ tasks|length }} งาน)</span></h1>
+  {% if can_create %}<a href="{{ url_for('tasks.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> สร้างงานใหม่</a>{% endif %}
+</div>
+{{ filter_bar(filters, staff=staff if (is_mgr or can_assign) else none, endpoint='tasks.index', show_search=true) }}
+<div class="card">{{ task_table(tasks) }}</div>
+{% endblock %}

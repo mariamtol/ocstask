@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+{% set meta = {
+  'assigned': ('bi-person-plus', 'ได้รับมอบหมาย'),
+  'due_soon': ('bi-hourglass-split', 'ใกล้ครบกำหนด'),
+  'overdue':  ('bi-alarm', 'เลยกำหนด'),
+  'issue':    ('bi-flag-fill', 'ปัญหา/อุปสรรค'),
+  'comment':  ('bi-chat-dots', 'ความคิดเห็น'),
+  'report':   ('bi-journal-text', 'รายงานผล'),
+  'new_task': ('bi-person-plus', 'มีการเพิ่มงานใหม่'),
+} %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h4 fw-bold mb-0">การแจ้งเตือน</h1>
+  {% if unread_notifications %}
+  <form method="post" action="{{ url_for('misc.read_all') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-check2-all"></i> อ่านทั้งหมด</button>
+  </form>
+  {% endif %}
+</div>
+<div class="card">
+  <div class="list-group list-group-flush">
+    {% for n in notifications %}
+      {% set icon, label = meta.get(n.type, ('bi-bell', 'แจ้งเตือน')) %}
+      <form method="post" action="{{ url_for('misc.open_notification', notif_id=n.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button class="list-group-item list-group-item-action d-flex gap-3 align-items-start notif-item {{ 'unread' if not n.is_read }}">
+          <span class="notif-icon notif-{{ n.type }}"><i class="bi {{ icon }}"></i></span>
+          <span class="flex-grow-1 text-start">
+            <span class="d-block">{{ n.message }}</span>
+            <span class="small text-muted">{{ label }} · {{ n.created_at|thaidate(true) }}</span>
+          </span>
+          {% if not n.is_read %}<span class="unread-dot" title="ยังไม่ได้อ่าน"></span>{% endif %}
+        </button>
+      </form>
+    {% else %}
+      <div class="empty-state"><i class="bi bi-bell-slash"></i><div>ไม่มีการแจ้งเตือน</div></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

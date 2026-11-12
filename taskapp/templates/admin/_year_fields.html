@@ -1,0 +1,14 @@
+{% set y = year or new_year %}
+<div class="mb-3">
+  <label class="form-label">ปีการศึกษา (พ.ศ.)</label>
+  <input type="number" name="year_be" value="{{ y.year_be }}" min="2400" max="2800" class="form-control" required data-year-be>
+</div>
+<div class="mb-3">
+  <label class="form-label">วันเริ่มต้น</label>
+  <input type="date" name="start_date" value="{{ y.start_date }}" class="form-control" required data-year-start>
+</div>
+<div class="mb-3">
+  <label class="form-label">วันสิ้นสุด</label>
+  <input type="date" name="end_date" value="{{ y.end_date }}" class="form-control" required data-year-end>
+  <div class="form-text">ระบบเติมวันที่ให้อัตโนมัติ (1 ส.ค. – 31 ก.ค.) เมื่อกรอกปี และสามารถปรับแก้ได้</div>
+</div>

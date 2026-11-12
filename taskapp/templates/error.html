@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+{% set messages = {403: 'คุณไม่มีสิทธิ์เข้าถึงหน้านี้', 404: 'ไม่พบข้อมูลที่ต้องการ', 413: 'ไฟล์มีขนาดใหญ่เกินกำหนด (สูงสุด 20 MB)'} %}
+<div class="empty-state py-5">
+  <i class="bi bi-exclamation-octagon"></i>
+  <h1 class="h3 mt-2">{{ error.code }}</h1>
+  <p>{{ messages.get(error.code, error.description) }}</p>
+  <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">กลับหน้าแดชบอร์ด</a>
+</div>
+{% endblock %}

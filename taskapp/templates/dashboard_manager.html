@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% from "_macros.html" import filter_bar, task_table, progress_bar, status_badge, priority_badge, due_label with context %}
+{% block content %}
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <div>
+    <h1 class="h4 fw-bold mb-0">{{ {'all': 'แดชบอร์ดหัวหน้าหน่วยงาน', 'division': 'แดชบอร์ดหัวหน้าแผนก'}.get(scope, 'แดชบอร์ดภาพรวมงานของฉัน') }}</h1>
+    {% set sel = academic_years|selectattr('id', 'equalto', filters.year)|first %}
+    <div class="text-muted small">{% if scope == 'division' %}ภาพรวมงานของสมาชิกแผนก{{ division_label }}{% elif scope == 'all' %}ภาพรวมความคืบหน้าของงานทั้งหมดใน{{ org_name }}{% else %}ภาพรวมงานที่คุณเกี่ยวข้อง{% endif %} ·
+      <span class="badge year-badge"><i class="bi bi-calendar3"></i> {{ 'ปีการศึกษา ' ~ sel.year_be if sel else 'ทุกปีการศึกษา' }}</span>
+      · ข้อมูล ณ {{ today|thaidate }}</div>
+  </div>
+  {% if can_create %}<a href="{{ url_for('tasks.create') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> สร้างงานใหม่</a>{% endif %}
+</div>
+
+{{ filter_bar(filters, staff=staff) }}
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3 col-xl">
+    <div class="stat-tile"><div class="stat-label">งานทั้งหมด</div><div class="stat-value">{{ tasks|length }}</div></div>
+  </div>
+  {% for key, icon in [('not_started','bi-circle'), ('in_progress','bi-arrow-repeat'), ('done','bi-check-circle-fill'), ('on_hold','bi-pause-circle')] %}
+  <div class="col-6 col-md-3 col-xl">
+    <a class="stat-tile stat-link status-tile-{{ key }}" href="{{ url_for('tasks.index', status=key, year=filters.year) }}">
+      <div class="stat-label"><i class="bi {{ icon }}"></i> {{ STATUS_LABELS[key] }}</div>
+      <div class="stat-value">{{ counts[key] }}</div>
+    </a>
+  </div>
+  {% endfor %}
+  <div class="col-6 col-md-3 col-xl">
+    <a class="stat-tile stat-link status-tile-overdue" href="{{ url_for('tasks.index', overdue=1, year=filters.year) }}"
+       title="งานที่เลยวันครบกำหนดแล้วแต่ยังไม่เสร็จ (ไม่นับงานที่ระงับ)">
+      <div class="stat-label"><i class="bi bi-alarm"></i> งานล่าช้า</div>
+      <div class="stat-value">{{ overdue|length }}</div>
+    </a>
+  </div>
+  <div class="col-12 col-md-6 col-xl">
+    <div class="stat-tile">
+      <div class="stat-label">ความคืบหน้าเฉลี่ย</div>
+      <div class="stat-value">{{ avg_progress|pct }}<small>%</small></div>
+      {{ progress_bar(avg_progress, 6, false) }}
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-alarm text-overdue"></i> งานที่เลยกำหนด</span>
+        <span class="badge badge-overdue">{{ overdue|length }}</span>
+      </div>
+      <div class="list-group list-group-flush scroll-list">
+        {% for t in overdue %}
+          <a class="list-group-item list-group-item-action" href="{{ url_for('tasks.detail', task_id=t.id) }}">
+            <div class="d-flex justify-content-between gap-2">
+              <span class="fw-semibold">{{ t.title }}</span>{{ priority_badge(t.priority) }}
+            </div>
+            <div class="small mt-1">{{ due_label(t) }}</div>
+            <div class="mt-1">{{ progress_bar(t.progress, 6) }}</div>
+          </a>
+        {% else %}
+          <div class="empty-state small"><i class="bi bi-emoji-smile"></i><div>ไม่มีงานที่เลยกำหนด</div></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-flag-fill text-issue"></i> ปัญหา/อุปสรรครอแก้ไข</span>
+        <span class="badge badge-issue">{{ issues|length }}</span>
+      </div>
+      <div class="list-group list-group-flush scroll-list">
+        {% for r in issues %}
+          <a class="list-group-item list-group-item-action" href="{{ url_for('tasks.detail', task_id=r.task_id) }}#report-{{ r.id }}">
+            <div class="d-flex justify-content-between gap-2">
+              <span class="fw-semibold">{{ r.task_title }}</span>
+              <span class="small text-muted text-nowrap">{{ r.report_date|thaidate }}</span>
+            </div>
+            <div class="small text-muted">โดย {{ r.reporter }}</div>
+            <div class="small mt-1 text-truncate-2">{{ r.problems or r.obstacles }}</div>
+          </a>
+        {% else %}
+          <div class="empty-state small"><i class="bi bi-check2-all"></i><div>ไม่มีปัญหาที่รอแก้ไข</div></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-people"></i> ภาระงานของพนักงานแต่ละคน</div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr>
+        <th>พนักงาน</th>
+        <th style="min-width:180px">งานที่กำลังรับผิดชอบ</th>
+        <th class="text-center">งานย่อยค้าง</th>
+        <th class="text-center">เสร็จสิ้น</th>
+        <th class="text-center">เลยกำหนด</th>
+        <th style="min-width:150px">ความคืบหน้าเฉลี่ย (งานที่ยังไม่เสร็จ)</th>
+      </tr></thead>
+      <tbody>
+      {% for w in workload %}
+        <tr>
+          <td>
+            <a href="{{ url_for('tasks.index', assignee=w.user.id, year=filters.year) }}" class="fw-semibold text-decoration-none">{{ w.user.full_name }}</a>
+            <div class="small text-muted">{{ w.user.position or '' }}</div>
+          </td>
+          <td>
+            <div class="d-flex align-items-center gap-2" title="{{ w.active }} งาน">
+              <div class="load-track"><div class="load-bar" style="width: {{ (w.active / max_active * 100)|round }}%"></div></div>
+              <span class="fw-semibold">{{ w.active }}</span>
+            </div>
+          </td>
+          <td class="text-center">{{ w.open_subtasks }}{% if w.overdue_subtasks %} <span class="small text-overdue">({{ w.overdue_subtasks }} เลยกำหนด)</span>{% endif %}</td>
+          <td class="text-center">{{ w.done }}</td>
+          <td class="text-center">{% if w.overdue %}<span class="badge badge-overdue">{{ w.overdue }}</span>{% else %}0{% endif %}</td>
+          <td>{% if w.avg_progress is not none %}{{ progress_bar(w.avg_progress, 6) }}{% else %}<span class="text-muted small">-</span>{% endif %}</td>
+        </tr>
+      {% else %}
+        <tr><td colspan="6" class="text-center text-muted">ยังไม่มีพนักงานในระบบ</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-list-task"></i> งานตามตัวกรอง</span>
+    <a href="{{ url_for('tasks.index', **dict(request.args, year=filters.year)) }}" class="small">ดูทั้งหมด</a>
+  </div>
+  {{ task_table(tasks[:15]) }}
+</div>
+{% endblock %}

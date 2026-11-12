@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}ปีการศึกษา - ระบบมอบหมายและติดตามงาน{% endblock %}
+{% block content %}
+<nav class="small mb-2"><a href="{{ url_for('admin.index') }}">ผู้ดูแลระบบ</a> / ปีการศึกษา</nav>
+<h1 class="h4 fw-bold mb-1">จัดการปีการศึกษา</h1>
+<p class="text-muted small mb-3">ปีการศึกษาเริ่มวันที่ 1 สิงหาคม และสิ้นสุดวันที่ 31 กรกฎาคมของปีถัดไป
+  เช่น ปีการศึกษา 2569 = 1 ส.ค. 2569 – 31 ก.ค. 2570 · งานแต่ละงานจะถูกจัดเข้าปีการศึกษาตามวันเริ่มต้นงาน</p>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead><tr><th>ปีการศึกษา</th><th>วันเริ่มต้น</th><th>วันสิ้นสุด</th><th class="text-end">จำนวนงาน</th><th></th></tr></thead>
+          <tbody>
+          {% for y in years %}
+            {% set is_current = current_year and y.id == current_year.id %}
+            <tr class="{{ 'current-year-row' if is_current }}">
+              <td class="fw-semibold">
+                {{ y.year_be }}
+                {% if is_current %}<span class="badge status-done"><i class="bi bi-check-circle-fill"></i> ปัจจุบัน</span>{% endif %}
+                {% if y.start_date <= today <= y.end_date and not is_current %}<span class="badge status-in_progress">ตามปฏิทิน</span>{% endif %}
+              </td>
+              <td>{{ y.start_date|thaidate }}</td>
+              <td>{{ y.end_date|thaidate }}</td>
+              <td class="text-end"><a href="{{ url_for('tasks.index', year=y.id) }}">{{ y.task_count }}</a></td>
+              <td class="text-end text-nowrap">
+                {% if not is_current %}
+                <form method="post" action="{{ url_for('admin.set_current_year', year_id=y.id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button class="btn btn-sm btn-outline-success" title="ตั้งเป็นปีปัจจุบัน"><i class="bi bi-star"></i> ตั้งเป็นปีปัจจุบัน</button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('admin.year_form', year_id=y.id) }}" class="btn btn-sm btn-outline-secondary" title="แก้ไข"><i class="bi bi-pencil"></i></a>
+                <form method="post" action="{{ url_for('admin.delete_year', year_id=y.id) }}" class="d-inline" data-confirm="ลบปีการศึกษา {{ y.year_be }}?">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                  <button class="btn btn-sm btn-outline-danger" title="ลบ" {{ 'disabled' if y.task_count or is_current }}><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr><td colspan="5" class="text-center text-muted">ยังไม่มีปีการศึกษา</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="small text-muted mt-2"><i class="bi bi-info-circle"></i> “ปีปัจจุบัน” คือปีที่แดชบอร์ดและรายการงานแสดงเป็นค่าเริ่มต้น ·
+      ลบได้เฉพาะปีที่ยังไม่มีงานและไม่ใช่ปีปัจจุบัน</div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle"></i> เพิ่มปีการศึกษา</div>
+      <form method="post" action="{{ url_for('admin.year_form') }}" class="card-body" id="yearForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        {% include "admin/_year_fields.html" %}
+        <button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> เพิ่มปีการศึกษา</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

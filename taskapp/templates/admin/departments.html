@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}หน่วยงานและแผนก - ระบบมอบหมายและติดตามงาน{% endblock %}
+{% block content %}
+<nav class="small mb-2"><a href="{{ url_for('admin.index') }}">ผู้ดูแลระบบ</a> / หน่วยงานและแผนก</nav>
+<h1 class="h4 fw-bold mb-1">จัดการหน่วยงานและแผนก</h1>
+<p class="text-muted small mb-3">แต่ละหน่วยงานมีได้หลายแผนก · กำหนดหน่วยงานและแผนกของผู้ใช้ได้ที่หน้า
+  <a href="{{ url_for('misc.users') }}">จัดการผู้ใช้งาน</a>
+  {% if unassigned %}· <span class="text-soon">ผู้ใช้ที่ยังไม่ระบุหน่วยงาน {{ unassigned }} คน</span>{% endif %}</p>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    {% for d in departments %}
+    <div class="card mb-3" id="dept-{{ d.id }}">
+      <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <span><i class="bi bi-building"></i> {{ d.name }}
+          <a href="{{ url_for('misc.users', department=d.id) }}" class="badge role-badge text-decoration-none ms-1">{{ d.user_count }} คน</a></span>
+        <span class="text-nowrap">
+          <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#rename-dept-{{ d.id }}" title="เปลี่ยนชื่อหน่วยงาน"><i class="bi bi-pencil"></i></button>
+          <form method="post" action="{{ url_for('admin.department_delete', dept_id=d.id) }}" class="d-inline"
+                data-confirm="ลบหน่วยงาน “{{ d.name }}” และแผนกทั้งหมดในหน่วยงานนี้?">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <button class="btn btn-sm btn-outline-danger" title="{{ 'มีผู้ใช้สังกัดอยู่ ลบไม่ได้' if d.user_count else 'ลบหน่วยงาน' }}" {{ 'disabled' if d.user_count }}><i class="bi bi-trash"></i></button>
+          </form>
+        </span>
+      </div>
+      <div class="collapse" id="rename-dept-{{ d.id }}">
+        <form method="post" action="{{ url_for('admin.department_edit', dept_id=d.id) }}" class="card-body border-bottom bg-subtle d-flex gap-2">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input name="name" value="{{ d.name }}" class="form-control form-control-sm" required maxlength="120" aria-label="ชื่อหน่วยงาน">
+          <button class="btn btn-sm btn-primary text-nowrap">บันทึก</button>
+        </form>
+      </div>
+
+      <ul class="list-group list-group-flush">
+        {% for v in d.divisions %}
+        <li class="list-group-item">
+          <div class="d-flex justify-content-between align-items-center gap-2">
+            <span><i class="bi bi-diagram-2 text-muted"></i> {{ v.name }}
+              <span class="small text-muted">· {{ v.user_count }} คน</span></span>
+            <span class="text-nowrap">
+              <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#rename-div-{{ v.id }}" title="เปลี่ยนชื่อแผนก"><i class="bi bi-pencil"></i></button>
+              <form method="post" action="{{ url_for('admin.division_delete', div_id=v.id) }}" class="d-inline" data-confirm="ลบแผนก “{{ v.name }}”?">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-sm btn-outline-danger" title="{{ 'มีผู้ใช้สังกัดอยู่ ลบไม่ได้' if v.user_count else 'ลบแผนก' }}" {{ 'disabled' if v.user_count }}><i class="bi bi-trash"></i></button>
+              </form>
+            </span>
+          </div>
+          <div class="collapse" id="rename-div-{{ v.id }}">
+            <form method="post" action="{{ url_for('admin.division_edit', div_id=v.id) }}" class="d-flex gap-2 mt-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+              <input name="name" value="{{ v.name }}" class="form-control form-control-sm" required maxlength="120" aria-label="ชื่อแผนก">
+              <button class="btn btn-sm btn-primary text-nowrap">บันทึก</button>
+            </form>
+          </div>
+        </li>
+        {% else %}
+        <li class="list-group-item small text-muted">ยังไม่มีแผนกในหน่วยงานนี้</li>
+        {% endfor %}
+        <li class="list-group-item bg-subtle">
+          <form method="post" action="{{ url_for('admin.division_new', dept_id=d.id) }}" class="d-flex gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input name="name" class="form-control form-control-sm" placeholder="ชื่อแผนกใหม่" required maxlength="120" aria-label="ชื่อแผนกใหม่">
+            <button class="btn btn-sm btn-outline-primary text-nowrap"><i class="bi bi-plus-lg"></i> เพิ่มแผนก</button>
+          </form>
+        </li>
+      </ul>
+    </div>
+    {% else %}
+    <div class="card"><div class="empty-state"><i class="bi bi-building"></i><div>ยังไม่มีหน่วยงาน — เริ่มจากเพิ่มหน่วยงานทางด้านขวา</div></div></div>
+    {% endfor %}
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-plus-circle"></i> เพิ่มหน่วยงาน</div>
+      <form method="post" action="{{ url_for('admin.department_new') }}" class="card-body">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <label class="form-label">ชื่อหน่วยงาน</label>
+        <input name="name" class="form-control mb-3" required maxlength="120" placeholder="เช่น สำนักเทคโนโลยีสารสนเทศ">
+        <button class="btn btn-primary w-100"><i class="bi bi-plus-lg"></i> เพิ่มหน่วยงาน</button>
+      </form>
+    </div>
+    <div class="small text-muted mt-2"><i class="bi bi-info-circle"></i> ลบได้เฉพาะหน่วยงาน/แผนกที่ไม่มีผู้ใช้สังกัดอยู่
+      · การลบหน่วยงานจะลบแผนกทั้งหมดในหน่วยงานนั้นด้วย</div>
+  </div>
+</div>
+{% endblock %}
